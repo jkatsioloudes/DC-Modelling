@@ -1,0 +1,79 @@
+-- QUESTION 1
+
+MODULE cryptographer(id, leftcoin, payer)
+FROZENVAR
+    -- h for heads, t for tails.
+    owncoin: {h, t};
+VAR
+    -- s for same, d for different, n for neither.
+    announcement: {s, d, n};
+ASSIGN
+    init(announcement) := n;
+    next(announcement) :=
+        case
+            -- not payer and sees same coins announces same
+            !(id = payer) & (owncoin = leftcoin): s;
+            
+            -- payer and sees same coins announces different
+            (id = payer) & (owncoin = leftcoin): d;
+            
+            -- not payer and sees different coins announces different
+            !(id = payer) & !(owncoin = leftcoin): d;
+            
+            -- payer and sees different coins announces same
+            (id = payer) & !(owncoin = leftcoin): s;
+        esac;
+        
+MODULE main
+FROZENVAR
+    payer: {NSA, c1, c2, c3};
+VAR
+    c_1: cryptographer(c1, c_2.owncoin, payer);
+    c_2: cryptographer(c2, c_3.owncoin, payer);
+    c_3: cryptographer(c3, c_1.owncoin, payer);
+    
+    
+-- QUESTION 2
+
+-- Expressing protocol specifications in CTL with expectation for all of the following 6 formulas to hold.
+
+-- The first 3 formulas cover the cases where an even number of differences occurs therefore NSA is the payer.
+
+SPEC
+    AG ((c_1.announcement = s & c_2.announcement = d & c_3.announcement = d) -> (payer = NSA));
+    
+SPEC    
+    AG ((c_1.announcement = d & c_2.announcement = s & c_3.announcement = d) -> (payer = NSA));
+    
+SPEC    
+    AG ((c_1.announcement = d & c_2.announcement = d & c_3.announcement = s) -> (payer = NSA));
+    
+-- The next 3 formulas cover the cases where an odd number of differences occurs therefore the payer is not the NSA but one of the three cryptographers.
+
+SPEC
+    AG ((c_1.announcement = s & c_2.announcement = s & c_3.announcement = d) -> !(payer = NSA));
+    
+SPEC    
+    AG ((c_1.announcement = s & c_2.announcement = d & c_3.announcement = s) -> !(payer = NSA));
+    
+SPEC    
+    AG ((c_1.announcement = s & c_2.announcement = s & c_3.announcement = d) -> !(payer = NSA));
+    
+    
+-- QUESTION 3    
+
+-- The results I obtain are in my opinion correct because all of the above specifications hold.  Note that when I coded question 1 and 2 initially, I made so using 'VAR' and this made both the coin tossed between the 2 cryptographers and the payer to become non deterministic and consequently the specs defined in question 2 to be false.  To fix this, I understood that I needed a static/constant variable and after checking different sources online I came accross 'FROZENVAR' found in NuSMV manual that gave the results I expected.
+
+-- Moreover, I tried to do further experiments with intetionally false formulas so that counter examples are returned from NuSMV.  These include:
+
+-- Different payers from those expected, for example:
+--SPEC
+--    AG ((c_1.announcement = s & c_2.announcement = d & c_3.announcement = d) -> !(payer = NSA));
+
+--SPEC    
+--    AG ((c_1.announcement = s & c_2.announcement = s & c_3.announcement = d) -> (payer = NSA));
+
+-- I was also interested on whether zero is thought as an even or odd number in this context and I found out using the following where we have all three cryptographers to announce 'same' therefore we have zero number of differences and the payer is indeed NSA which makes zero here to be thought as even:
+
+SPEC    
+    AG ((c_1.announcement = s & c_2.announcement = s & c_3.announcement = s) -> (payer = NSA));    
